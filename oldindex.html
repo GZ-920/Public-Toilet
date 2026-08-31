@@ -1,0 +1,1165 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>诶？厕所！</title>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<style>
+  @font-face{font-family:'FHWA';src:url('./FHWASeriesE2020minus10.otf') format('opentype');font-display:swap;}
+  @font-face{font-family:'SourceHanSerifCN-Heavy';src:url('./SourceHanSerifCN-Heavy-4.otf') format('opentype');font-display:swap;}
+  :root{--bg:#1a0a0a;--panel:#2a1515;--line:#4a2020;--accent:#d32f2f;--accent-dark:#b71c1c;--accent-soft:#5c2a2a;--text:#eeeeee;--sub:#bbbbbb;--ok:#2fae66;--save:#f39c12;}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;margin:0;font-family:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text);overflow:hidden;}
+  
+  #layout{display:flex;height:100vh;height:100dvh;}
+  #sidebar{width:340px;min-width:340px;background:var(--panel);border-right:1px solid var(--line);padding:18px 16px 90px;overflow-y:auto;transition:transform .25s ease;z-index:80;}
+  #main{flex:1;position:relative;overflow:auto;padding:16px;background:#111;}
+  
+  #empty-state{position:absolute;top:0;right:0;bottom:0;left:340px;display:flex;flex-direction:column;align-items:flex-start;justify-content:space-between;padding:40px;z-index:10;}
+  #bg-img{position:fixed;top:0;left:0;width:100vw;height:100vh;object-fit:cover;opacity:0.6;z-index:-1;}
+  #empty-content{display:flex;flex-direction:column;z-index:2;}
+  #empty-title{font-family:'SourceHanSerifCN-Heavy',serif;font-size:48px;color:#fff;text-align:left;line-height:1.2;text-shadow:0 4px 15px rgba(0,0,0,0.8);}
+  #intro{font-size:18px;color:#fff;margin-top:12px;max-width:600px;line-height:1.6;text-shadow:0 2px 8px rgba(0,0,0,0.8);}
+  #about{font-size:14px;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,0.8);}
+  #bg-music-btn{position:absolute;top:20px;right:20px;background:rgba(50,20,20,0.8);border:1px solid var(--accent);border-radius:50%;width:48px;height:48px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,0.3);z-index:20;color:var(--text);}
+  #bg-music-btn .material-icons{font-size:28px;}
+  #upload-btn-inline{position:absolute;bottom:40px;right:40px;background:var(--accent);color:#fff;width:80px;height:80px;border-radius:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:none;box-shadow:0 10px 30px rgba(0,0,0,0.3);z-index:20;transition:all .2s;}
+  #upload-btn-inline:hover{background:var(--accent-dark);transform:scale(1.05);}
+  #upload-btn-inline .material-icons{font-size:40px;}
+  
+  #mainCanvasWrap{position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center;display:none;overflow:hidden;}
+  canvas#canvas{display:block;max-width:100%;max-height:100%;object-fit:contain;background:#111;box-shadow:0 6px 30px rgba(0,0,0,.4);border-radius:6px;touch-action:none;transition:transform 0.1s ease-out;}
+  #overlayUI,#handleLayer{position:absolute;left:0;top:0;pointer-events:none;width:100%;height:100%;}
+  .pickBtn{position:absolute;pointer-events:auto;background:var(--accent);color:#fff;border:2px solid #fff;border-radius:16px;width:32px;height:32px;font-weight:700;font-size:14px;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;}
+  .pickBtn:hover{background:var(--accent-dark);}
+  .pickBtn.selected { background: var(--ok); border: 2px solid #fff; }
+  
+  #zoom-controls { position: absolute; top: 10px; right: 10px; display: flex; align-items: center; gap: 5px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 5px; z-index: 100; }
+  #zoom-controls button { width: 30px; height: 30px; padding: 0; border: none; cursor: pointer; background: transparent; color: var(--text); font-weight: bold;}
+  #zoom-text { font-size: 12px; min-width: 40px; text-align: center; }
+  #zoom-controls .reset-btn { width: auto; padding: 0 8px; font-size: 14px; }
+
+  input[type=file]{display:none;}
+  label.file-btn{width:100%;background:var(--panel);color:var(--text);border:1.5px dashed var(--line);border-radius:10px;padding:10px 12px;font-size:14px;cursor:pointer;font-weight:500;display:flex;align-items:center;justify-content:center;gap:5px;}
+  label.file-btn:hover{border-color:var(--accent);}
+  .chk{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text);margin:10px 0;}
+  input[type=checkbox] { appearance: none; width: 18px; height: 18px; border: 2px solid var(--sub); border-radius: 4px; cursor: pointer; position: relative; }
+  input[type=checkbox]:checked { background-color: var(--accent); border-color: var(--accent); }
+  input[type=checkbox]:checked::after { content: ''; position: absolute; left: 4px; top: 1px; width: 5px; height: 9px; border: solid white; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+  
+  h1{font-size:16px;margin:0 0 6px;color:var(--accent);font-weight:700;}
+  h2{font-size:12.5px;letter-spacing:.02em;color:var(--accent);margin:20px 0 8px;font-weight:700;border-bottom:2px solid var(--accent-soft);padding-bottom:6px;}
+  label{display:block;font-size:12.5px;color:var(--sub);margin:10px 0 4px;font-weight:500;}
+  .section{border:1.5px solid var(--line);border-radius:12px;padding:12px;margin-bottom:12px;background:rgba(26,10,10,0.8);}
+  .small{font-size:11.5px;color:var(--sub);}
+  
+  button { 
+    background: transparent; 
+    border: none; 
+    color: var(--text); 
+    font-size: 14px; 
+    cursor: pointer; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    gap: 5px; 
+    padding: 10px; 
+    width: auto; 
+    border-radius: 8px;
+  }
+  button:hover { background: var(--accent-soft); color: var(--accent); } 
+  button:active { transform: scale(.98); }
+  
+  button.save { color: var(--save); font-weight: bold; }
+  button.primary { color: var(--accent); font-weight: bold; }
+  .material-icons{font-size:18px;}
+  
+  .row{display:flex;gap:8px;}.row > *{flex:1;}
+  .slider-row{margin:10px 0;}
+  .slider-row .lbl{display:flex;justify-content:space-between;font-size:12px;color:var(--sub);margin-bottom:2px;}
+  input[type=range]{width:100%;accent-color:var(--accent);height:22px;}
+  
+  #status{font-size:12.5px;color:var(--accent);min-height:20px;white-space:pre-wrap;line-height:1.5;}
+  
+  #dev-options-wrapper { display: none; }
+  #debug-panel{display:none;}
+  #ocr-debug-tools { margin-top: 10px; border-top: 1px dashed #555; padding-top: 10px; }
+  #ocr-preview-canvas { width: 100%; margin-bottom: 10px; border: 1px solid #444; background: #000; }
+  #ocr-lines, #ocr-passed-text { width: 100%; min-height: 80px; background: #111; color: #ccc; border: 1px solid var(--line); border-radius: 6px; padding: 5px; font-size: 12px; font-family: monospace; }
+  #ocr-passed-text { color: #4caf50; }
+  
+  #ocr-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);backdrop-filter:blur(4px);z-index:1000;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;}
+  #progress-bar{width:80%;max-width:400px;height:10px;background:rgba(255,255,255,0.2);border-radius:10px;overflow:hidden;margin-top:20px;}
+  #progress-fill{width:0%;height:100%;background:var(--accent);transition:width .2s;}
+  #progress-text{font-size:24px;font-weight:bold;}
+  #progress-stage{font-size:13px;color:#ccc;margin-top:8px;max-width:80%;text-align:center;}
+  #progress-raw{font-size:11px;color:#888;margin-top:14px;max-width:80%;text-align:center;word-break:break-all;}
+  
+  #manual-prompt-modal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);backdrop-filter:blur(4px);z-index:1001;display:none;flex-direction:column;align-items:center;justify-content:center;color:#fff;}
+  #manual-prompt-modal .modal-box{background:var(--panel);border:1px solid var(--line);padding:24px;border-radius:14px;text-align:center;max-width:90%;}
+  #manual-prompt-modal h3{margin:0 0 12px 0;font-size:18px;}
+  #manual-prompt-modal p{font-size:14px;color:var(--sub);margin-bottom:18px;}
+  
+  /* ============ 保存区核心修改 ============ */
+  /* 容器默认显示，包含虚框、转圈、图片 */
+  #preview-wrap, #preview-wrap-mobile { 
+    display: block; 
+    margin-top: 10px; 
+    text-align: center; 
+    padding: 0; 
+    border: none; 
+    background: transparent; 
+    position: relative;
+  }
+  
+  /* 正方形虚线框（默认显示） */
+  #save-placeholder {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    border: 2px dashed var(--line);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--sub);
+    font-size: 14px;
+  }
+  
+  /* 加载转圈（默认隐藏） */
+  #loading-spinner {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    display: none; /* 默认隐藏 */
+    align-items: center;
+    justify-content: center;
+  }
+  .spinner {
+    width: 30px;
+    height: 30px;
+    border: 3px solid var(--accent-soft);
+    border-top: 3px solid var(--accent);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+  @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  
+  /* 图片（默认隐藏） */
+  #result-img, #result-img-mobile {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    object-fit: contain;
+    border-radius: 6px;
+    display: none;
+  }
+  
+  /* 成功 Toast 改为绿色 */
+  #toast { position: fixed; top: 15px; left: 50%; transform: translateX(-50%); background: var(--ok); border: 1px solid var(--ok); color: #fff; padding: 10px 20px; border-radius: 8px; z-index: 2000; opacity: 0; pointer-events: none; transition: opacity .3s; font-size: 14px; font-weight: bold; }
+  #toast.show { opacity: 1; }
+  
+  #mobileBar, #mobile-toolbar-mini { display: none; }
+  
+  @media (max-width:820px){
+    #sidebar { display: none; }
+    #empty-state { left: 0; padding: 20px; }
+    #empty-title { font-size: 36px; }
+    #bg-music-btn { top: 10px; right: 10px; }
+    #upload-btn-inline { bottom: 20px; right: 20px; width: 64px; height: 64px; border-radius: 16px; }
+    #upload-btn-inline .material-icons { font-size: 32px; }
+    
+    #mobile-sheet {
+      position: fixed;
+      left: 0; right: 0; bottom: 0;
+      height: 400px;
+      background: var(--panel);
+      border-radius: 20px 20px 0 0;
+      z-index: 90;
+      transform: translateY(80%);
+      transition: transform 0.3s ease, opacity 0.3s;
+      box-shadow: 0 -10px 30px rgba(0,0,0,0.5);
+      display: flex;
+      flex-direction: column;
+      opacity: 0;
+      pointer-events: none;
+    }
+    #mobile-sheet.visible { 
+      transform: translateY(80%); 
+      opacity: 1; 
+      pointer-events: auto; 
+    }
+    #mobile-sheet.expanded { transform: translateY(0); }
+    
+    #sheet-handle {
+      height: 20px;
+      background: var(--panel);
+      border-top-left-radius: 20px;
+      border-top-right-radius: 20px;
+      flex-shrink: 0;
+      cursor: grab;
+      position: relative;
+    }
+    #sheet-handle::after {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 8px;
+      transform: translateX(-50%);
+      width: 40px;
+      height: 5px;
+      background: var(--sub);
+      border-radius: 3px;
+    }
+    
+    #quick-actions {
+      padding: 10px;
+      display: flex;
+      justify-content: space-around;
+      border-bottom: 1px solid var(--line);
+      flex-shrink: 0;
+      cursor: grab;
+    }
+    #quick-actions button {
+      background: transparent;
+      border: none;
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-size: 12px;
+      gap: 4px;
+      padding: 0;
+      width: auto;
+      cursor: pointer;
+    }
+    #quick-actions .save { color: var(--save); font-weight: bold; }
+    #quick-actions button span { font-size: 22px; }
+    
+    #expanded-panel {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+      background: var(--panel);
+    }
+  }
+</style>
+</head>
+<body>
+
+<div id="empty-state">
+  <img id="bg-img" src="background.png">
+  <div id="empty-content">
+    <div id="empty-title">找不到厕所怎么办？<br>别急！</div>
+    <div id="intro">上传照片，OCR 识别厕所位置（识别得非常垃圾），计算距离并生成清晰符合标准的指示牌。</div>
+  </div>
+  <div id="about">
+    <span style="font-weight: bold;">制作</span>    哔哩哔哩 @瓜子920
+  </div>
+  <button id="bg-music-btn" title="播放/暂停音乐">
+    <span id="music-icon" class="material-icons">play_arrow</span>
+  </button>
+  <button id="upload-btn-inline" title="上传照片">
+    <span class="material-icons">upload</span>
+  </button>
+</div>
+
+<div id="toast"></div>
+
+<div id="ocr-overlay" style="display:none;">
+  <div id="progress-text">0%</div>
+  <div id="progress-bar"><div id="progress-fill"></div></div>
+  <div id="progress-stage"></div>
+  <div id="progress-raw"></div>
+</div>
+
+<div id="manual-prompt-modal">
+  <div class="modal-box">
+    <h3>未能自动识别到 HUAWEI</h3>
+    <p>请点击下方按钮进入手动选择模式<br>然后在图上直接点击 HUAWEI 所在的中心位置。</p>
+    <button id="enter-manual-btn" class="primary">进入手动选择模式</button>
+  </div>
+</div>
+
+<div id="layout">
+  <div id="sidebar">
+    <h1>诶？厕所！</h1>
+    
+    <div class="section">
+      <label>上传包含厕所的照片</label>
+      <label for="mainPhotoInput" class="file-btn"><span class="material-icons">upload_file</span> 选择图片上传</label>
+      <input type="file" id="mainPhotoInput" accept="image/*">
+    </div>
+
+    <div class="section">
+      <div class="row">
+        <button id="cornerLeftBtn"><span class="material-icons">south_west</span>左下角</button>
+        <button id="cornerRightBtn"><span class="material-icons">south_east</span>右下角</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <button id="ocrBtn" class="primary"><span class="material-icons">search</span>运行 OCR</button>
+      <div class="chk"><input type="checkbox" id="manualPickChk"><label style="margin:0" for="manualPickChk">手动点选目标点</label></div>
+      <div id="status"></div>
+    </div>
+    
+    <div id="dev-options-wrapper" style="display: none;">
+        <div class="section">
+            <button id="show-debug-btn"><span class="material-icons">tune</span>开发者选项</button>
+        </div>
+    
+        <div id="debug-panel" class="section" style="margin-top:10px;">
+          <div class="chk"><input type="checkbox" id="debugChk"><label style="margin:0" for="debugChk">开启调试（拖拽调整）</label></div>
+          <div class="slider-row"><div class="lbl"><span>箭头缩放</span><span id="v_arrowScale"></span></div><input type="range" id="arrowScale" min="0.2" max="3" step="0.01" value="0.2"></div>
+          <div class="slider-row"><div class="lbl"><span>米数文字缩放</span><span id="v_numScale"></span></div><input type="range" id="numScale" min="0.2" max="3" step="0.01" value="0.41"></div>
+          <div class="slider-row"><div class="lbl"><span>局部平面宽 (px)</span><span id="v_planeW"></span></div><input type="range" id="planeW" min="200" max="1200" step="10" value="600"></div>
+          <div class="slider-row"><div class="lbl"><span>局部平面高 (px)</span><span id="v_planeH"></span></div><input type="range" id="planeH" min="60" max="500" step="5" value="150"></div>
+          <button id="resetHandles">重置为当前侧预设值</button>
+          <div class="row" style="margin-top:10px;">
+            <button id="saveLeftBtn">复制左数值</button>
+            <button id="saveRightBtn">复制右数值</button>
+          </div>
+          
+          <div id="ocr-debug-tools">
+            <h2>OCR 预处理调试</h2>
+            <canvas id="ocr-preview-canvas"></canvas>
+            <div id="filter-controls"></div>
+            <button id="copy-filter-btn"><span class="material-icons">content_copy</span>复制当前参数</button>
+            <label>识别到的每行文本</label>
+            <textarea id="ocr-lines" readonly placeholder="无文本"></textarea>
+            <label>通过识别的文本</label>
+            <textarea id="ocr-passed-text" readonly placeholder="无匹配成功的文本"></textarea>
+          </div>
+        </div>
+    </div>
+
+    <div class="section">
+      <button id="renderBtn"><span class="material-icons">refresh</span>重新合成</button>
+      <button id="downloadBtn" class="save"><span class="material-icons">download</span>保存高清图片</button>
+      <a id="dlLink" class="dl" style="display:none"></a>
+      
+      <!-- 默认显示虚线框，合成时显示转圈 -->
+      <div id="preview-wrap">
+        <div id="save-placeholder">等待生成... </div>
+        <div id="loading-spinner"><div class="spinner"></div></div>
+        <img id="result-img" alt="长按保存图片" />
+      </div>
+    </div>
+  </div>
+
+  <div id="main">
+    <div id="mainCanvasWrap" style="display:none;">
+      <canvas id="canvas"></canvas>
+      <div id="overlayUI"></div>
+      <div id="handleLayer"></div>
+      <div id="zoom-controls">
+        <button onclick="changeZoom(-0.1)"><span class="material-icons">remove</span></button>
+        <div id="zoom-text">100%</div>
+        <button onclick="changeZoom(0.1)"><span class="material-icons">add</span></button>
+        <button onclick="resetZoom()" class="reset-btn">重置</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 移动端一体化底栏 -->
+<div id="mobile-sheet">
+  <div id="sheet-handle"></div>
+  <div id="quick-actions">
+    <button onclick="document.getElementById('mainPhotoInput').click();"><span class="material-icons">upload</span>上传</button>
+    <button onclick="changeCorner('left');"><span class="material-icons">south_west</span>左下</button>
+    <button onclick="changeCorner('right');"><span class="material-icons">south_east</span>右下</button>
+    <button class="save" onclick="downloadAndOpen();"><span class="material-icons">save_alt</span>保存</button>
+  </div>
+  <div id="expanded-panel">
+    <h2>更多工具</h2>
+    <div class="section">
+      <button id="ocrBtnMobile" class="primary"><span class="material-icons">search</span>重新识别</button>
+      <div class="chk"><input type="checkbox" id="manualPickChkMobile"><label style="margin:0" for="manualPickChkMobile">手动点选目标点</label></div>
+    </div>
+    
+    <h2>长按保存图片</h2>
+    <div id="preview-wrap-mobile">
+      <div id="save-placeholder-mobile">等待生成... </div>
+      <div id="loading-spinner-mobile"><div class="spinner"></div></div>
+      <img id="result-img-mobile" alt="长按保存图片" />
+    </div>
+  </div>
+</div>
+
+<div id="candPanel">
+  <h3>发现多个 "HUAWEI"，请选择一个</h3>
+  <div id="candList"></div>
+</div>
+
+<audio id="bg-music" loop src="./background_music.mp3"></audio>
+
+<script src="https://cdn.bootcdn.net/ajax/libs/tesseract.js/5.1.1/tesseract.min.js"></script>
+<script>
+const devMode = false; 
+if (!devMode) {
+    document.getElementById('dev-options-wrapper').style.display = 'none';
+} else {
+    document.getElementById('dev-options-wrapper').style.display = 'block';
+}
+
+const presetLeft = {"planeW":600,"planeH":150,"arrowLocal":{"x":520.9580745638808,"y":70.4592607233005,"rot":83.2714318448438,"scale":0.2},"numLocal":{"x":327.868627057268,"y":112.56940893360401,"scale":0.41},"quad":[{"x":0.324427205795326,"y":0.1638755980861244},{"x":0.9573783229842464,"y":0.21052631578947367},{"x":0.9669202996252854,"y":0.3038277511961722},{"x":0.3212465469149797,"y":0.26076555023923453}]};
+const presetRight = {"planeW":600,"planeH":150,"arrowLocal":{"x":517.8540747438559,"y":56.867983499668426,"rot":164.00808468051946,"scale":0.2},"numLocal":{"x":310.739640624313,"y":98.71562143526478,"scale":0.41},"quad":[{"x":0.05411713280458028,"y":0.2130642625685778},{"x":0.6928951729884999,"y":0.1668645128172223},{"x":0.6819758902503136,"y":0.2715839455869615},{"x":0.04865749143548686,"y":0.3085437453880458}]};
+
+const EXPORT_SCALE = 2;
+const defaultOcrSettings = { brightness: -100, contrast: 100, saturation: -100, hue: 0, blur: 0, grayscale: 0, invert: 0, temperature: 0, shadows: -100, highlights: 0, sharpen: 0, exposure: 100 };
+
+const state = {
+  mainImg:null, poleLeftImg:null, poleRightImg:null, arrowImg:null,
+  corner:'left', fontFamily:'FHWA, Arial, sans-serif',
+  ocrCandidates:[], target:null, manualPick:false, debug:false,
+  planeW:presetLeft.planeW, planeH:presetLeft.planeH,
+  arrowLocal:{...presetLeft.arrowLocal}, numLocal:{...presetLeft.numLocal},
+  quadLeft:presetLeft.quad, quadRight:presetRight.quad,
+  overlayRect:null, distText:'?',
+  ocrSettings: {...defaultOcrSettings}
+};
+
+/* ============ 首次进入自动预加载模型 ============ */
+let sharedWorker = null;
+async function preloadOCR() {
+    if (typeof Tesseract === 'undefined') return;
+    try {
+        sharedWorker = await Tesseract.createWorker('eng', 1, {});
+        console.log("OCR 模型预加载完成");
+    } catch(e) {
+        console.warn("OCR 模型预加载失败，将等待用户手动触发");
+    }
+}
+preloadOCR();
+
+async function getWorker(){ 
+    if(sharedWorker) return sharedWorker; 
+    sharedWorker = await Tesseract.createWorker('eng', 1, {}); 
+    return sharedWorker; 
+}
+
+let zoom = 1;
+let translateX = 0;
+let translateY = 0;
+let isDragging = false;
+let startX = 0;
+let startY = 0;
+let startTranslateX = 0;
+let startTranslateY = 0;
+
+function updateCanvasTransform() {
+    const canvas = document.getElementById('canvas');
+    canvas.style.transform = `translate(${translateX}px, ${translateY}px) scale(${zoom})`;
+    document.getElementById('zoom-text').textContent = Math.round(zoom * 100) + '%';
+}
+
+function changeZoom(delta) {
+    zoom = Math.max(0.1, Math.min(4, zoom + delta));
+    updateCanvasTransform();
+}
+
+function resetZoom() {
+    zoom = 1;
+    translateX = 0;
+    translateY = 0;
+    updateCanvasTransform();
+}
+
+document.getElementById('mainCanvasWrap').addEventListener('mousedown', (e) => {
+    if (e.target.tagName !== 'CANVAS') return;
+    isDragging = true;
+    startX = e.clientX;
+    startY = e.clientY;
+    startTranslateX = translateX;
+    startTranslateY = translateY;
+});
+document.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    translateX = startTranslateX + (e.clientX - startX);
+    translateY = startTranslateY + (e.clientY - startY);
+    updateCanvasTransform();
+});
+document.addEventListener('mouseup', () => isDragging = false);
+
+let lastTouchDist = 0;
+document.getElementById('mainCanvasWrap').addEventListener('touchstart', (e) => {
+    if (e.touches.length === 1) {
+        isDragging = true;
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+        startTranslateX = translateX;
+        startTranslateY = translateY;
+    } else if (e.touches.length === 2) {
+        isDragging = false;
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        lastTouchDist = Math.sqrt(dx * dx + dy * dy);
+    }
+});
+document.getElementById('mainCanvasWrap').addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    if (e.touches.length === 1 && isDragging) {
+        translateX = startTranslateX + (e.touches[0].clientX - startX);
+        translateY = startTranslateY + (e.touches[0].clientY - startY);
+        updateCanvasTransform();
+    } else if (e.touches.length === 2) {
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (lastTouchDist > 0) { changeZoom((dist - lastTouchDist) / 100); }
+        lastTouchDist = dist;
+    }
+});
+document.getElementById('mainCanvasWrap').addEventListener('touchend', () => { isDragging = false; lastTouchDist = 0; });
+
+document.getElementById('mainCanvasWrap').addEventListener('wheel', (e) => {
+    if (e.ctrlKey || e.metaKey) { e.preventDefault(); changeZoom(e.deltaY > 0 ? -0.1 : 0.1); }
+}, { passive: false });
+
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const overlayUI = document.getElementById('overlayUI');
+const handleLayer = document.getElementById('handleLayer');
+const statusEl = document.getElementById('status');
+const mainCanvasWrap = document.getElementById('mainCanvasWrap');
+const emptyState = document.getElementById('empty-state');
+const mobileSheet = document.getElementById('mobile-sheet');
+
+function setStatus(msg){ statusEl.textContent = msg; }
+function loadImage(src){ return new Promise((res,rej)=>{ const img = new Image(); img.crossOrigin='anonymous'; img.onload=()=>res(img); img.onerror=()=>rej(new Error('无法加载: '+src)); img.src=src; }); }
+function fileToDataURL(file){ return new Promise((res)=>{ const r = new FileReader(); r.onload = ()=>res(r.result); r.readAsDataURL(file); }); }
+
+function showToast(msg) {
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 3000);
+}
+
+const bgMusic = document.getElementById('bg-music');
+const musicIcon = document.getElementById('music-icon');
+let isPlaying = false;
+function toggleMusic() { if (isPlaying) { bgMusic.pause(); musicIcon.textContent = 'play_arrow'; } else { bgMusic.play().then(() => { musicIcon.textContent = 'pause'; }).catch(e => { musicIcon.textContent = 'play_arrow'; }); } isPlaying = !isPlaying; }
+window.addEventListener('load', () => { bgMusic.play().then(() => { musicIcon.textContent = 'pause'; isPlaying = true; }).catch(e => { isPlaying = false; musicIcon.textContent = 'play_arrow'; }); });
+document.getElementById('bg-music-btn').addEventListener('click', toggleMusic);
+
+(async function initAssets(){
+  const tryLoad = async (name, key)=>{ try{ state[key] = await loadImage('./'+name); }catch(e){} };
+  await Promise.all([ tryLoad('arrow.png','arrowImg'), tryLoad('pole_left.png','poleLeftImg'), tryLoad('pole_right.png','poleRightImg') ]);
+})();
+
+function showEmptyState() { 
+  emptyState.style.display = 'flex'; 
+  mainCanvasWrap.style.display = 'none'; 
+  mobileSheet.classList.remove('visible');
+  mobileSheet.classList.remove('expanded');
+}
+function showWorkspace() { 
+  emptyState.style.display = 'none'; 
+  mainCanvasWrap.style.display = 'flex'; 
+  mobileSheet.classList.add('visible');
+}
+
+function changeCorner(corner) {
+    if (corner === 'left') { document.getElementById('cornerLeftBtn').click(); }
+    else { document.getElementById('cornerRightBtn').click(); }
+}
+
+const sheetHandle = document.getElementById('sheet-handle');
+const quickActions = document.getElementById('quick-actions');
+let isDraggingSheet = false;
+let sheetDragMoved = false;
+let startSheetY = 0;
+let startSheetTranslate = 0;
+
+[sheetHandle, quickActions].forEach(el => {
+    el.addEventListener('pointerdown', (e) => {
+        isDraggingSheet = true;
+        sheetDragMoved = false;
+        startSheetY = e.clientY;
+        const currentTransform = getComputedStyle(mobileSheet).transform;
+        const matrix = new DOMMatrixReadOnly(currentTransform);
+        startSheetTranslate = matrix.m42;
+    });
+});
+
+document.addEventListener('pointermove', (e) => {
+    if (!isDraggingSheet) return;
+    let dy = e.clientY - startSheetY;
+    if (Math.abs(dy) > 5) sheetDragMoved = true;
+    let newTranslate = Math.max(0, Math.min(400, startSheetTranslate + dy));
+    mobileSheet.style.transform = `translateY(${newTranslate}px)`;
+    mobileSheet.style.transition = 'none';
+});
+
+document.addEventListener('pointerup', () => {
+    if (!isDraggingSheet) return;
+    isDraggingSheet = false;
+    mobileSheet.style.transition = 'transform 0.3s ease';
+    const currentTransform = getComputedStyle(mobileSheet).transform;
+    const matrix = new DOMMatrixReadOnly(currentTransform);
+    let currentY = matrix.m42;
+    if (currentY > 200) {
+        collapseSheet();
+    } else {
+        expandSheet();
+    }
+});
+
+document.addEventListener('click', (e) => {
+    if (sheetDragMoved) {
+        e.stopPropagation();
+        e.preventDefault();
+        sheetDragMoved = false;
+    }
+}, true);
+
+function expandSheet() {
+    mobileSheet.classList.add('expanded');
+    mobileSheet.style.transform = 'translateY(0)';
+}
+
+function collapseSheet() {
+    mobileSheet.classList.remove('expanded');
+    mobileSheet.style.transform = 'translateY(80%)';
+}
+
+document.getElementById('upload-btn-inline').addEventListener('click', () => { document.getElementById('mainPhotoInput').click(); });
+
+document.getElementById('mainPhotoInput').addEventListener('change', async (e)=>{
+  const f = e.target.files[0]; if(!f) return;
+  const url = await fileToDataURL(f);
+  state.mainImg = await loadImage(url);
+  showWorkspace();
+  state.target = null; state.ocrCandidates = [];
+  setStatus('主照片已加载：'+state.mainImg.naturalWidth+' × '+state.mainImg.naturalHeight);
+  render();
+  updateOCRPreview();
+  runOCR();
+});
+
+const manualPromptModal = document.getElementById('manual-prompt-modal');
+document.getElementById('enter-manual-btn').addEventListener('click', ()=>{
+  manualPromptModal.style.display = 'none';
+  document.getElementById('manualPickChk').checked = true;
+  document.getElementById('manualPickChkMobile').checked = true;
+  state.manualPick = true;
+  setStatus('请直接在图片上点选 HUAWEI 字样中心。');
+});
+
+document.getElementById('manualPickChk').addEventListener('change', e => {
+    document.getElementById('manualPickChkMobile').checked = e.target.checked;
+    state.manualPick = e.target.checked;
+});
+document.getElementById('manualPickChkMobile').addEventListener('change', e => {
+    document.getElementById('manualPickChk').checked = e.target.checked;
+    state.manualPick = e.target.checked;
+});
+
+function updateTargetAngles() {
+    if (!state.target || !state.mainImg) return;
+    const oRectOriginal = computeOverlayRect(state.mainImg.naturalWidth, state.mainImg.naturalHeight);
+    const quad = state.corner==='left'? state.quadLeft : state.quadRight;
+    const H_orig = computeHomography(planeSrcQuad(state.planeW, state.planeH), quadToCanvas(quad, oRectOriginal));
+    const arrowPos = applyH(H_orig, state.arrowLocal.x, state.arrowLocal.y);
+    const dx = state.target.cx - arrowPos.x;
+    const dy = state.target.cy - arrowPos.y;
+    state.distText = String(Math.round(Math.sqrt(dx*dx + dy*dy) / 2));
+    state.arrowLocal.rot = Math.atan2(dy, dx) * 180 / Math.PI;
+}
+
+function createFilterControls() {
+  const container = document.getElementById('filter-controls');
+  if(!container) return;
+  container.innerHTML = '';
+  const params = [
+    {key:'brightness', label:'亮度', min:-100, max:100, step:1},
+    {key:'contrast', label:'对比度', min:-100, max:100, step:1},
+    {key:'saturation', label:'饱和度', min:-100, max:100, step:1},
+    {key:'hue', label:'色相', min:-180, max:180, step:1},
+    {key:'blur', label:'模糊', min:0, max:20, step:0.5},
+    {key:'grayscale', label:'灰度', min:0, max:100, step:1},
+    {key:'invert', label:'反色', min:0, max:100, step:1},
+    {key:'temperature', label:'色温', min:-100, max:100, step:1},
+    {key:'shadows', label:'阴影', min:-100, max:100, step:1},
+    {key:'highlights', label:'高光', min:-100, max:100, step:1},
+    {key:'sharpen', label:'锐化', min:0, max:100, step:1},
+    {key:'exposure', label:'曝光', min:-100, max:100, step:1}
+  ];
+  
+  params.forEach(p => {
+    const row = document.createElement('div');
+    row.className = 'slider-row';
+    row.innerHTML = `<div class="lbl"><span>${p.label}</span><span id="v_${p.key}">${state.ocrSettings[p.key]}</span></div><input type="range" id="sl_${p.key}" min="${p.min}" max="${p.max}" step="${p.step}" value="${state.ocrSettings[p.key]}">`;
+    container.appendChild(row);
+    const slider = row.querySelector('input');
+    slider.addEventListener('input', (e) => {
+      state.ocrSettings[p.key] = parseFloat(e.target.value);
+      document.getElementById(`v_${p.key}`).textContent = state.ocrSettings[p.key];
+      updateOCRPreview();
+    });
+  });
+}
+
+function buildFilterString(s) {
+  let brightness = s.brightness + s.exposure;
+  let contrast = s.contrast + (s.sharpen * 0.5);
+  let filter = `brightness(${((brightness + 100) / 100).toFixed(2)}) contrast(${((contrast + 100) / 100).toFixed(2)}) saturate(${((s.saturation + 100) / 100).toFixed(2)}) hue-rotate(${s.hue}deg) blur(${s.blur}px) grayscale(${(s.grayscale / 100).toFixed(2)}) invert(${(s.invert / 100).toFixed(2)}) sepia(${(Math.abs(s.temperature) / 200).toFixed(2)})`;
+  let shadowHighlight = s.shadows * 0.5 + s.highlights * 0.5;
+  filter += ` brightness(${((shadowHighlight + 100) / 100).toFixed(2)})`;
+  return filter;
+}
+
+function updateOCRPreview() {
+  if (!state.mainImg) return;
+  const previewCanvas = document.getElementById('ocr-preview-canvas');
+  if (!previewCanvas) return;
+  const pctx = previewCanvas.getContext('2d');
+  const scale = Math.min(1, 300 / state.mainImg.naturalWidth);
+  previewCanvas.width = state.mainImg.naturalWidth * scale;
+  previewCanvas.height = state.mainImg.naturalHeight * scale;
+  pctx.filter = buildFilterString(state.ocrSettings);
+  pctx.drawImage(state.mainImg, 0, 0, previewCanvas.width, previewCanvas.height);
+  pctx.filter = 'none';
+}
+
+document.getElementById('copy-filter-btn').addEventListener('click', () => {
+  navigator.clipboard.writeText(JSON.stringify(state.ocrSettings, null, 2)).then(() => {
+    setStatus('OCR参数已复制。');
+  });
+});
+
+createFilterControls();
+updateOCRPreview();
+
+function normWord(s){ return (s||'').toUpperCase().replace(/[^A-Z0-9\[\]]/g,'').replace(/0/g,'O').replace(/1/g,'I').replace(/\|/g,'I'); }
+
+function isHuaweiLike(word){
+  const w = normWord(word);
+  if(!w || w.length < 2) return false;
+  if(w.includes('HUAWEI')) return true;
+  const LENIENT_TARGETS = ['HUA', 'WEI', 'UAW', 'AWE', 'WE[', 'HWA', 'WE1', 'WEL', 'UEI'];
+  for(let t of LENIENT_TARGETS) { if(w.includes(t)) return true; }
+  return false;
+}
+
+function findHuaweiHits(words){
+  const hits = [];
+  for(let i=0;i<words.length;i++){
+    const w = words[i];
+    if(isHuaweiLike(w.text)){
+      hits.push(w);
+      continue;
+    }
+    if(i+1<words.length){
+      const w2 = words[i+1];
+      const sameLine = Math.abs((w.bbox.y0+w.bbox.y1)/2 - (w2.bbox.y0+w2.bbox.y1)/2) < (w.bbox.y1-w.bbox.y0)*0.6;
+      if(sameLine && isHuaweiLike((w.text||'')+(w2.text||''))){
+        hits.push({ bbox: { x0: w.bbox.x0, y0: Math.min(w.bbox.y0,w2.bbox.y0), x1: w2.bbox.x1, y1: Math.max(w.bbox.y1,w2.bbox.y1) }, text: (w.text||'')+(w2.text||'') });
+      }
+    }
+  }
+  return hits;
+}
+
+function mergeCandidates(list, thresholdPx){
+  const merged = [];
+  for(const c of list){
+    const dup = merged.find(m => Math.hypot(m.cx-c.cx, m.cy-c.cy) < thresholdPx);
+    if(!dup) merged.push(c);
+  }
+  return merged;
+}
+
+function buildBaseCanvas(img){
+  const w = img.naturalWidth, h = img.naturalHeight;
+  const off = document.createElement('canvas');
+  off.width = w; off.height = h;
+  const octx = off.getContext('2d');
+  octx.filter = buildFilterString(state.ocrSettings);
+  octx.drawImage(img, 0, 0);
+  octx.filter = 'none';
+  return { canvas: off, scale: 1 };
+}
+
+function buildLocalContrastCanvas(baseCanvas){
+  const w = baseCanvas.width, h = baseCanvas.height;
+  const bctx = baseCanvas.getContext('2d');
+  const imgData = bctx.getImageData(0,0,w,h);
+  const d = imgData.data;
+  const gray = new Float32Array(w*h);
+  for(let i=0, p=0; i<d.length; i+=4, p++){ gray[p] = 0.299*d[i] + 0.587*d[i+1] + 0.114*d[i+2]; }
+  const grayCanvas = document.createElement('canvas'); grayCanvas.width = w; grayCanvas.height = h;
+  const gctx = grayCanvas.getContext('2d'); const grayImgData = gctx.createImageData(w,h);
+  for(let p=0, i=0; p<gray.length; p++, i+=4){ const v = gray[p]; grayImgData.data[i]=v; grayImgData.data[i+1]=v; grayImgData.data[i+2]=v; grayImgData.data[i+3]=255; }
+  gctx.putImageData(grayImgData,0,0);
+  const small = document.createElement('canvas'); const targetSmallSide = 48; const sf = Math.max(1, Math.min(w,h)/targetSmallSide);
+  small.width = Math.max(1, Math.round(w/sf)); small.height = Math.max(1, Math.round(h/sf));
+  const sctx = small.getContext('2d'); sctx.imageSmoothingEnabled = true; sctx.imageSmoothingQuality = 'high'; sctx.drawImage(grayCanvas, 0, 0, small.width, small.height);
+  const blurBack = document.createElement('canvas'); blurBack.width = w; blurBack.height = h;
+  const bbctx = blurBack.getContext('2d'); bbctx.imageSmoothingEnabled = true; bbctx.imageSmoothingQuality = 'high'; bbctx.drawImage(small, 0, 0, w, h);
+  const blurData = bbctx.getImageData(0,0,w,h).data; const amount = 2.5;
+  for(let i=0, p=0; i<d.length; i+=4, p++){ const bl = blurData[i]; let v = gray[p] + amount*(gray[p]-bl); v = Math.max(0, Math.min(255, v)); d[i]=d[i+1]=d[i+2]=v; }
+  const out = document.createElement('canvas'); out.width = w; out.height = h; out.getContext('2d').putImageData(imgData, 0, 0); return out;
+}
+
+async function runOCR(){
+  if(!state.mainImg){ setStatus('请先上传主照片'); return; }
+  if(typeof Tesseract === 'undefined'){ setStatus('OCR 引擎未能从网络加载，请检查网络后刷新重试。'); return; }
+
+  const ocrOverlay = document.getElementById('ocr-overlay');
+  const progressText = document.getElementById('progress-text');
+  const progressFill = document.getElementById('progress-fill');
+  const progressStage = document.getElementById('progress-stage');
+  const progressRaw = document.getElementById('progress-raw');
+  const ocrLinesBox = document.getElementById('ocr-lines');
+  const passedTextBox = document.getElementById('ocr-passed-text');
+  
+  if (ocrOverlay) ocrOverlay.style.display = 'flex';
+  if (progressText) progressText.textContent = '0%';
+  if (progressFill) progressFill.style.width = '0%';
+  if (progressStage) progressStage.textContent = '准备中...';
+  if (progressRaw) progressRaw.textContent = '';
+  if (ocrLinesBox) ocrLinesBox.value = '';
+  if (passedTextBox) passedTextBox.value = '';
+
+  try{
+    const worker = await getWorker();
+    const { canvas: baseCanvas, scale } = buildBaseCanvas(state.mainImg);
+
+    const plan = [
+      { label: '当前原图参数', psm: '3', getSource: ()=>baseCanvas },
+      { label: '当前原图参数', psm: '11', getSource: ()=>baseCanvas },
+      { label: '当前原图参数', psm: '6', getSource: ()=>baseCanvas },
+      { label: '局部增强', psm: '11', getSource: ()=>buildLocalContrastCanvas(baseCanvas) },
+      { label: '局部增强', psm: '3', getSource: ()=>buildLocalContrastCanvas(baseCanvas) },
+    ];
+
+    let allHits = [];
+    for(let i=0;i<plan.length;i++){
+      const p = plan[i];
+      if (progressStage) progressStage.textContent = `识别中 (第 ${i+1}/${plan.length} 轮...)`;
+      if (progressFill) progressFill.style.width = Math.round((i/plan.length)*100)+'%';
+      const source = p.getSource();
+      await worker.setParameters({ tessedit_pageseg_mode: p.psm, tessedit_char_whitelist: '' });
+      const { data } = await worker.recognize(source);
+      
+      let rawLines = (data.text || '').split('\n').filter(line => line.trim() !== '');
+      if (ocrLinesBox) ocrLinesBox.value = rawLines.join('\n');
+      
+      if (progressRaw) progressRaw.textContent = '当前文本: ' + rawLines.join(' ').slice(0, 200);
+      const words = data.words || [];
+      const hits = findHuaweiHits(words);
+      
+      if (hits.length > 0 && passedTextBox) {
+        passedTextBox.value = hits.map(h => h.text).join(' | ');
+      }
+      
+      hits.forEach(w=>{ allHits.push({ cx: (w.bbox.x0+w.bbox.x1)/2/scale, cy: (w.bbox.y0+w.bbox.y1)/2/scale }); });
+      if(hits.length>0) break;
+    }
+    if (progressFill) progressFill.style.width = '100%';
+
+    const mergeThreshold = Math.max(state.mainImg.naturalWidth, state.mainImg.naturalHeight) * 0.02;
+    state.ocrCandidates = mergeCandidates(allHits, mergeThreshold);
+
+    if(state.ocrCandidates.length===1) {
+      state.target = {cx: state.ocrCandidates[0].cx, cy: state.ocrCandidates[0].cy};
+      updateTargetAngles();
+      setStatus('已定位到 1 处 HUAWEI 字样。');
+      if (manualPromptModal) manualPromptModal.style.display = 'none';
+      showToast('识别成功！请点击下方保存按钮');
+    } else if(state.ocrCandidates.length>1) {
+      setStatus('识别到 '+state.ocrCandidates.length+' 处 HUAWEI，请点击图中编号选择。');
+      if (manualPromptModal) manualPromptModal.style.display = 'none';
+    } else {
+      setStatus('未能识别到 HUAWEI。');
+      if (manualPromptModal) manualPromptModal.style.display = 'flex';
+    }
+    render();
+  }catch(err){
+    console.error(err);
+    setStatus('OCR 出错: '+err.message+'（可改用手动点选）');
+    if (manualPromptModal) manualPromptModal.style.display = 'flex';
+  } finally { if (ocrOverlay) ocrOverlay.style.display = 'none'; }
+}
+
+document.getElementById('ocrBtn').addEventListener('click', runOCR);
+document.getElementById('ocrBtnMobile').addEventListener('click', runOCR);
+
+/* ============ 核心逻辑修复：切换左右时自动更新 ============ */
+function applyPreset(corner) { 
+  let preset = corner === 'left' ? presetLeft : presetRight; 
+  state.planeW = preset.planeW; state.planeH = preset.planeH; 
+  state.arrowLocal = {...preset.arrowLocal}; state.numLocal = {...preset.numLocal}; 
+  if (corner === 'left') { state.quadLeft = [...preset.quad]; } else { state.quadRight = [...preset.quad]; } 
+  document.getElementById('arrowScale').value = state.arrowLocal.scale; 
+  document.getElementById('numScale').value = state.numLocal.scale; 
+  document.getElementById('planeW').value = state.planeW; 
+  document.getElementById('planeH').value = state.planeH; 
+  document.getElementById('v_arrowScale').textContent = state.arrowLocal.scale; 
+  document.getElementById('v_numScale').textContent = state.numLocal.scale; 
+  document.getElementById('v_planeW').textContent = state.planeW; 
+  document.getElementById('v_planeH').textContent = state.planeH; 
+  
+  // 【关键修改】：只要目标已经选定，切换左右后立即更新箭头方向和米数，无需重新识别
+  if (state.target) {
+    updateTargetAngles();
+  }
+  render(); 
+}
+
+document.getElementById('cornerLeftBtn').addEventListener('click', ()=>{ state.corner='left'; applyPreset('left'); document.getElementById('cornerLeftBtn').classList.add('primary'); document.getElementById('cornerRightBtn').classList.remove('primary'); });
+document.getElementById('cornerRightBtn').addEventListener('click', ()=>{ if(!state.poleRightImg){ setStatus('未找到 pole_right.png，请放入同目录'); return; } state.corner='right'; applyPreset('right'); document.getElementById('cornerRightBtn').classList.add('primary'); document.getElementById('cornerLeftBtn').classList.remove('primary'); });
+
+function bindSlider(id, out, cb){ const el = document.getElementById(id); const outEl = document.getElementById(out); const upd = ()=>{ outEl.textContent = el.value; cb(parseFloat(el.value)); render(); }; el.addEventListener('input', upd); upd(); }
+bindSlider('arrowScale','v_arrowScale', v=>state.arrowLocal.scale=v);
+bindSlider('numScale','v_numScale', v=>state.numLocal.scale=v);
+bindSlider('planeW','v_planeW', v=>state.planeW=v);
+bindSlider('planeH','v_planeH', v=>state.planeH=v);
+document.getElementById('debugChk').addEventListener('change', (e)=>{ state.debug = e.target.checked; render(); });
+document.getElementById('resetHandles').addEventListener('click', ()=>{ applyPreset(state.corner); render(); });
+document.getElementById('saveLeftBtn').addEventListener('click', () => { const data = { corner: 'left', planeW: state.planeW, planeH: state.planeH, arrowLocal: state.arrowLocal, numLocal: state.numLocal, quad: state.quadLeft }; navigator.clipboard.writeText(JSON.stringify(data, null, 2)).then(()=>setStatus('左侧数值已复制')); });
+document.getElementById('saveRightBtn').addEventListener('click', () => { const data = { corner: 'right', planeW: state.planeW, planeH: state.planeH, arrowLocal: state.arrowLocal, numLocal: state.numLocal, quad: state.quadRight }; navigator.clipboard.writeText(JSON.stringify(data, null, 2)).then(()=>setStatus('右侧数值已复制')); });
+
+function canvasClientToImage(clientX, clientY){ const rect = canvas.getBoundingClientRect(); return { x:(clientX-rect.left)*(canvas.width/rect.width), y:(clientY-rect.top)*(canvas.height/rect.height) }; }
+canvas.addEventListener('click', (e)=>{
+  if(!state.mainImg || !state.manualPick) return;
+  const {x,y} = canvasClientToImage(e.clientX, e.clientY);
+  state.target = {cx:x, cy:y};
+  updateTargetAngles();
+  setStatus('已手动设置目标点');
+  render();
+});
+
+function renderCandidatePicker(){
+  const panel = document.getElementById('candPanel');
+  const list = document.getElementById('candList');
+  if (!panel || !list) return;
+
+  list.innerHTML=''; 
+  if (overlayUI) overlayUI.innerHTML='';
+  
+  if(state.ocrCandidates.length<=1){ panel.style.display='none'; return; }
+  panel.style.display='block';
+  const canvasRect = canvas.getBoundingClientRect();
+  const wrapRect = mainCanvasWrap.getBoundingClientRect();
+  const offsetX = canvasRect.left - wrapRect.left;
+  const offsetY = canvasRect.top - wrapRect.top;
+  const dispScaleX = canvasRect.width / canvas.width;
+  const dispScaleY = canvasRect.height / canvas.height;
+
+  state.ocrCandidates.forEach((c,i)=>{
+    const isSelected = state.target && Math.abs(state.target.cx - c.cx) < 1 && Math.abs(state.target.cy - c.cy) < 1;
+
+    const btn = document.createElement('button'); btn.textContent = (i+1);
+    if (isSelected) btn.classList.add('selected');
+    btn.onclick = ()=>{ state.target={cx:c.cx,cy:c.cy}; updateTargetAngles(); render(); }; list.appendChild(btn);
+    
+    const marker = document.createElement('button'); marker.className='pickBtn'; marker.textContent = i+1;
+    if (isSelected) marker.classList.add('selected');
+    marker.style.left = (offsetX + c.cx * dispScaleX - 16) + 'px'; 
+    marker.style.top = (offsetY + c.cy * dispScaleY - 16) + 'px';
+    marker.onclick = ()=>{ state.target={cx:c.cx,cy:c.cy}; updateTargetAngles(); render(); }; 
+    if (overlayUI) overlayUI.appendChild(marker);
+  });
+}
+
+let dragging = null;
+function renderHandles(){
+  if (!handleLayer) return;
+  handleLayer.innerHTML='';
+  if(!state.debug || !state.mainImg || !state.overlayRect) return;
+  const rect = canvas.getBoundingClientRect();
+  const dispScaleX = rect.width/canvas.width, dispScaleY = rect.height/canvas.height;
+  const oRect = state.overlayRect;
+  const quad = state.corner==='left'? state.quadLeft : state.quadRight;
+  quad.forEach((pt, idx)=>{
+    const px = oRect.x + pt.x*oRect.w; const py = oRect.y + pt.y*oRect.h;
+    const h = document.createElement('div'); h.className='handle';
+    h.style.left=(px*dispScaleX)+'px'; h.style.top=(py*dispScaleY)+'px';
+    h.addEventListener('pointerdown', (e)=>{ dragging={type:'quad', idx}; e.stopPropagation(); h.setPointerCapture(e.pointerId); });
+    handleLayer.appendChild(h);
+  });
+  const H = computeHomography(planeSrcQuad(), quadToCanvas(quad, oRect));
+  const arrowPt = applyH(H, state.arrowLocal.x, state.arrowLocal.y);
+  const numPt = applyH(H, state.numLocal.x, state.numLocal.y);
+  const ah = document.createElement('div'); ah.className='handle arrow';
+  ah.style.left=(arrowPt.x*dispScaleX)+'px'; ah.style.top=(arrowPt.y*dispScaleY)+'px';
+  ah.addEventListener('pointerdown',(e)=>{ dragging={type: e.shiftKey?'arrowRot':'arrow'}; e.stopPropagation(); ah.setPointerCapture(e.pointerId); });
+  handleLayer.appendChild(ah);
+  const nh = document.createElement('div'); nh.className='handle num';
+  nh.style.left=(numPt.x*dispScaleX)+'px'; nh.style.top=(numPt.y*dispScaleY)+'px';
+  nh.addEventListener('pointerdown',(e)=>{ dragging={type:'num'}; e.stopPropagation(); nh.setPointerCapture(e.pointerId); });
+  handleLayer.appendChild(nh);
+}
+
+document.addEventListener('pointermove',(e)=>{
+  if(!dragging || !state.overlayRect) return;
+  const {x,y} = canvasClientToImage(e.clientX, e.clientY);
+  const oRect = state.overlayRect;
+  const quad = state.corner==='left'? state.quadLeft : state.quadRight;
+  if(dragging.type==='quad'){
+    let fx = (x-oRect.x)/oRect.w, fy=(y-oRect.y)/oRect.h;
+    quad[dragging.idx] = {x:fx, y:fy}; render(); return;
+  }
+  const H = computeHomography(planeSrcQuad(), quadToCanvas(quad, oRect));
+  const Hinv = invert3(H);
+  const local = applyH(Hinv, x, y);
+  if(dragging.type==='arrow'){ state.arrowLocal.x=local.x; state.arrowLocal.y=local.y; }
+  else if(dragging.type==='num'){ state.numLocal.x=local.x; state.numLocal.y=local.y; }
+  else if(dragging.type==='arrowRot'){ const dx = local.x-state.arrowLocal.x, dy=local.y-state.arrowLocal.y; state.arrowLocal.rot = Math.atan2(dy,dx)*180/Math.PI; }
+  render();
+});
+document.addEventListener('pointerup',()=>{ dragging=null; });
+
+function planeSrcQuad(pw, ph) { const w = pw || state.planeW; const h = ph || state.planeH; return [ {x:0,y:0}, {x:w,y:0}, {x:w,y:h}, {x:0,y:h} ]; }
+function quadToCanvas(quadFrac, oRect){ return quadFrac.map(p=>({x: oRect.x + p.x*oRect.w, y: oRect.y + p.y*oRect.h})); }
+function computeHomography(src, dst){ const A=[], b=[]; for(let i=0;i<4;i++){ const {x:xs,y:ys}=src[i], {x:xd,y:yd}=dst[i]; A.push([xs,ys,1,0,0,0,-xs*xd,-ys*xd]); b.push(xd); A.push([0,0,0,xs,ys,1,-xs*yd,-ys*yd]); b.push(yd); } const h = solveLinear(A,b); return [h[0],h[1],h[2], h[3],h[4],h[5], h[6],h[7],1]; }
+function solveLinear(A,b){ const n=8; const M = A.map((row,i)=>[...row,b[i]]); for(let col=0; col<n; col++){ let piv=col; for(let r=col+1;r<n;r++) if(Math.abs(M[r][col])>Math.abs(M[piv][col])) piv=r; [M[col],M[piv]]=[M[piv],M[col]]; const pv = M[col][col] || 1e-9; for(let c=col;c<=n;c++) M[col][c]/=pv; for(let r=0;r<n;r++){ if(r===col) continue; const f = M[r][col]; for(let c=col;c<=n;c++) M[r][c]-=f*M[col][c]; } } return M.map(r=>r[n]); }
+function applyH(H,x,y){ const w = H[6]*x+H[7]*y+H[8]; return { x:(H[0]*x+H[1]*y+H[2])/w, y:(H[3]*x+H[4]*y+H[5])/w }; }
+function invert3(m){ const [a,b,c,d,e,f,g,h,i]=m; const A=e*i-f*h, B=-(d*i-f*g), C=d*h-e*g; const D=-(b*i-c*h), E=a*i-c*g, F=-(a*h-b*g); const G=b*f-c*e, Hh=-(a*f-c*d), I=a*e-b*d; const det = a*A+b*B+c*C; return [A/det,D/det,G/det, B/det,E/det,Hh/det, C/det,F/det,I/det]; }
+
+/* ============ 尺寸设置：加大横版路牌 ============ */
+function computeOverlayRect(baseW, baseH){
+  if(!state.mainImg || !state.poleLeftImg) return null;
+  const overlayImg = state.corner==='left'? state.poleLeftImg : (state.poleRightImg||state.poleLeftImg);
+  const W = baseW || state.mainImg.naturalWidth;
+  const Hh = baseH || state.mainImg.naturalHeight;
+  const ow = overlayImg.naturalWidth, oh = overlayImg.naturalHeight;
+  const aspect = ow/oh;
+  let h = Hh * 0.75; // 更大了
+  let w = h * aspect;
+  if(w > W * 0.9){ // 更宽了
+    w = W * 0.9; 
+    h = w / aspect; 
+  }
+  return {x: state.corner==='left'?0:(W-w), y: Hh-h, w, h, img:overlayImg};
+}
+function drawArrow(octx, img){ const w = img.naturalWidth, h=img.naturalHeight; octx.drawImage(img, -w/2, -h/2, w, h); }
+
+function paintComposition(cctx, baseW, baseH, scale) {
+    cctx.clearRect(0,0,baseW,baseH);
+    cctx.drawImage(state.mainImg, 0, 0, baseW, baseH);
+    const oRect = computeOverlayRect(baseW, baseH);
+    if(oRect){
+        cctx.drawImage(oRect.img, oRect.x, oRect.y, oRect.w, oRect.h);
+        const effPlaneW = state.planeW * scale;
+        const effPlaneH = state.planeH * scale;
+        const off = document.createElement('canvas');
+        off.width = effPlaneW; off.height = effPlaneH;
+        const octx = off.getContext('2d');
+        const quad = state.corner==='left'? state.quadLeft : state.quadRight;
+        const H = computeHomography(planeSrcQuad(effPlaneW, effPlaneH), quadToCanvas(quad, oRect));
+        const arrowLocalScaled = { x: state.arrowLocal.x * scale, y: state.arrowLocal.y * scale, rot: state.arrowLocal.rot, scale: state.arrowLocal.scale };
+        const numLocalScaled = { x: state.numLocal.x * scale, y: state.numLocal.y * scale, scale: state.numLocal.scale };
+        let distText = state.distText || '?';
+        octx.save();
+        octx.translate(numLocalScaled.x, numLocalScaled.y);
+        octx.scale(numLocalScaled.scale, numLocalScaled.scale);
+        octx.font = `bold ${Math.round(effPlaneH*0.62)}px ${state.fontFamily}`;
+        octx.fillStyle = '#ffffff'; 
+        octx.textAlign='right'; octx.textBaseline='middle';
+        octx.fillText(distText, 0, 0);
+        octx.restore();
+        if(state.arrowImg){
+            octx.save();
+            octx.translate(arrowLocalScaled.x, arrowLocalScaled.y);
+            octx.rotate((arrowLocalScaled.rot + 90) * Math.PI / 180);
+            octx.scale(arrowLocalScaled.scale * scale, arrowLocalScaled.scale * scale);
+            drawArrow(octx, state.arrowImg);
+            octx.restore();
+        }
+        const srcQuad = planeSrcQuad(effPlaneW, effPlaneH);
+        const dstQuad = quadToCanvas(quad, oRect);
+        warpTriangle(cctx, off, [srcQuad[0],srcQuad[1],srcQuad[2]], [dstQuad[0],dstQuad[1],dstQuad[2]]);
+        warpTriangle(cctx, off, [srcQuad[0],srcQuad[2],srcQuad[3]], [dstQuad[0],dstQuad[2],dstQuad[3]]);
+    }
+}
+
+async function render(){
+  if(!state.mainImg){ return; }
+  const W = state.mainImg.naturalWidth, Hh = state.mainImg.naturalHeight;
+  canvas.width = W; canvas.height = Hh;
+  paintComposition(ctx, W, Hh, 1);
+  if(state.target){
+    ctx.save(); ctx.strokeStyle='#2fae66'; ctx.lineWidth=Math.max(3, W*0.0015);
+    ctx.beginPath(); ctx.arc(state.target.cx, state.target.cy, W*0.008+6, 0, Math.PI*2); ctx.stroke(); ctx.restore();
+  }
+  renderCandidatePicker(); renderHandles();
+}
+
+function warpTriangle(destCtx, srcCanvas, srcTri, dstTri){
+  destCtx.save(); destCtx.beginPath(); destCtx.moveTo(dstTri[0].x, dstTri[0].y); destCtx.lineTo(dstTri[1].x, dstTri[1].y); destCtx.lineTo(dstTri[2].x, dstTri[2].y); destCtx.closePath(); destCtx.clip();
+  const [s0,s1,s2] = srcTri, [d0,d1,d2] = dstTri;
+  const denom = s0.x*(s1.y-s2.y) + s1.x*(s2.y-s0.y) + s2.x*(s0.y-s1.y);
+  const a = (d0.x*(s1.y-s2.y) + d1.x*(s2.y-s0.y) + d2.x*(s0.y-s1.y))/denom;
+  const b = (d0.y*(s1.y-s2.y) + d1.y*(s2.y-s0.y) + d2.y*(s0.y-s1.y))/denom;
+  const c = (d0.x*(s2.x-s1.x) + d1.x*(s0.x-s2.x) + d2.x*(s1.x-s0.x))/denom;
+  const d = (d0.y*(s2.x-s1.x) + d1.y*(s0.x-s2.x) + d2.y*(s1.x-s0.x))/denom;
+  const e = (d0.x*(s1.x*s2.y-s2.x*s1.y) + d1.x*(s2.x*s0.y-s0.x*s2.y) + d2.x*(s0.x*s1.y-s1.x*s0.y))/denom;
+  const f = (d0.y*(s1.x*s2.y-s2.x*s1.y) + d1.y*(s2.x*s0.y-s0.x*s2.y) + d2.y*(s0.x*s1.y-s1.x*s0.y))/denom;
+  destCtx.setTransform(a,b,c,d,e,f); destCtx.drawImage(srcCanvas,0,0);
+  destCtx.restore(); destCtx.setTransform(1,0,0,1,0,0);
+}
+
+document.getElementById('renderBtn').addEventListener('click', render);
+
+function downloadAndOpen() {
+    if(!state.mainImg){ setStatus('请先上传主照片'); return; }
+    document.getElementById('downloadBtn').click();
+    if (window.innerWidth <= 820) {
+        expandSheet();
+        setTimeout(() => {
+            const panel = document.getElementById('expanded-panel');
+            panel.scrollTop = panel.scrollHeight;
+        }, 300);
+    }
+}
+
+/* ============ 保存逻辑：显示转圈 - 生成 - 展示图片 ============ */
+document.getElementById('downloadBtn').addEventListener('click', ()=>{
+  if(!state.mainImg){ setStatus('请先上传主照片'); return; }
+  
+  // 切换显示状态：隐藏虚框和图片，显示转圈
+  const placeholderDesktop = document.getElementById('save-placeholder');
+  const spinnerDesktop = document.getElementById('loading-spinner');
+  const imgDesktop = document.getElementById('result-img');
+  
+  const placeholderMobile = document.getElementById('save-placeholder-mobile');
+  const spinnerMobile = document.getElementById('loading-spinner-mobile');
+  const imgMobile = document.getElementById('result-img-mobile');
+
+  placeholderDesktop.style.display = 'none';
+  spinnerDesktop.style.display = 'flex';
+  imgDesktop.style.display = 'none';
+
+  placeholderMobile.style.display = 'none';
+  spinnerMobile.style.display = 'flex';
+  imgMobile.style.display = 'none';
+
+  // 让浏览器先渲染转圈，再执行耗时合成
+  setTimeout(() => {
+    const eCanvas = document.createElement('canvas');
+    eCanvas.width = state.mainImg.naturalWidth * EXPORT_SCALE;
+    eCanvas.height = state.mainImg.naturalHeight * EXPORT_SCALE;
+    const ectx = eCanvas.getContext('2d');
+    paintComposition(ectx, eCanvas.width, eCanvas.height, EXPORT_SCALE);
+    const link = document.getElementById('dlLink');
+    link.href = eCanvas.toDataURL('image/png');
+    link.download = 'composited.png';
+    link.click();
+
+    // 合成完毕：隐藏转圈，显示图片
+    spinnerDesktop.style.display = 'none';
+    imgDesktop.src = link.href;
+    imgDesktop.style.display = 'block';
+
+    spinnerMobile.style.display = 'none';
+    imgMobile.src = link.href;
+    imgMobile.style.display = 'block';
+  }, 50); // 50毫秒让浏览器渲染转圈
+});
+</script>
+</body>
+</html>
